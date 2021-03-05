@@ -225,6 +225,7 @@ upstream {{ $upstream_name }} {
 {{/* Get the VIRTUAL_ROOT By containers w/ use fastcgi root */}}
 {{ $vhost_root := or (first (groupByKeys $containers "Env.VIRTUAL_ROOT")) "/var/www/public" }}
 
+{{ $should_proxy_host_header := or (first (groupByKeys $containers "Env.PROXY_HOST_HEADER")) (or $.Env.PROXY_HOST_HEADER "") }}
 
 {{/* Get the first cert name defined by containers w/ the same vhost */}}
 {{ $certName := (first (groupByKeys $containers "Env.CERT_NAME")) }}
@@ -322,7 +323,10 @@ server {
 		{{ else }}
 		proxy_pass {{ trim $proto }}://{{ trim $upstream_name }};
 		{{ end }}
-
+        {{ if $should_proxy_host_header }}
+        proxy_set_header Host            $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        {{ end }}
 		{{ if (exists (printf "/etc/nginx/htpasswd/%s" $host)) }}
 		auth_basic	"Restricted {{ $host }}";
 		auth_basic_user_file	{{ (printf "/etc/nginx/htpasswd/%s" $host) }};
